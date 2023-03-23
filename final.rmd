@@ -1,0 +1,448 @@
+---
+title: "R project"
+author: "Dhananjeyan"
+date: "2023-04-01"
+output:
+pdf_document: default
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Introduction
+
+The following project deals with designing a palindrome game based on the given rules followed by an analysis of the game's performance and behaviour.
+The aim of the game is to form a 5-digit palindrome from an 8X8 grid table of characters in the fewest possible moves.
+
+# Part 1
+
+Here I have used the recommended grid matrix to initialize the game board for the game.
+
+```{r import data}
+lgrid <- matrix(NA, nrow = 8, ncol = 8)
+lgrid[1,] <- c("r", "l", "q", "s", "t", "z", "c", "a")
+lgrid[2,] <- c("i", "v", "d", "z", "h", "l", "t", "p")
+lgrid[3,] <- c("u", "r", "o", "y", "w", "c", "a", "c")
+lgrid[4,] <- c("x", "r", "f", "n", "d", "p", "g", "v")
+lgrid[5,] <- c("h", "j", "f", "f", "k", "h", "g", "m")
+lgrid[6,] <- c("k", "y", "e", "x", "x", "g", "k", "i")
+lgrid[7,] <- c("l", "q", "e", "q", "f", "u", "e", "b")
+lgrid[8,] <- c("l", "s", "d", "h", "i", "k", "y", "n")
+```
+
+Given, each move of the game should be random except for the first move, which is covered in the later part of this project.
+The game rules can be categorized into 3 basic sections.\
+
+1.
+First move of the token should not be on the edge of the game board.
+(Covered in later part of the program).
+2.
+Find the adjacent square for each move.\
+
+3.
+Implement the rules if the token lands on a green cell.\
+
+The following function gets the token's current position as an argument and returns the position of a random adjacent square.
+Whenever a random move should be made, this function is called.
+The lists xpos and ypos has valid X and Y positions of adjacent squares of the given cell in a sequential manner (Length of the lists is 8).
+The samp has a randomly generated value from 1 to 8 which decides the random position to take for the next move from the lists xpos and ypos.
+
+```{r Function to get random adjacent square}
+# Function to find a random adjacent square
+get_random_adjacent <- function(i, j)
+{ 
+  while (TRUE)
+  {
+    samp <- sample(1:8, 1) # Select a random value from 1 to 8 to move to adjacent square
+    # A list of valid adjacent Row values
+    xpos <- c(i - 1, i - 1, i - 1, i, i, i + 1, i + 1, i + 1) 
+    # A list of valid adjacent column values
+    ypos <- c(j - 1, j, j + 1, j - 1, j + 1, j - 1, j, j + 1) 
+    
+    # Example if input square is (4,4), 
+    #the Adjacent squares are given by (3,3), (3,4), (3,5), (4,3), (4,5), (5,3), (5,4), (5,5)
+    # In xpos, all the x values in the above lists are listed
+    # In ypos, all the y values in the above lists are listed
+    if (isValidPos(xpos[samp], ypos[samp], 9, 9) == 1) #Check whether the adjacent cell is valid
+    {
+      return (c(xpos[samp], ypos[samp]))
+    }
+  }
+}
+```
+
+The following function decides on whether the randomly moved square is a valid square.
+(i.e. the position does not overflow the 8X8 grid)
+
+```{r Check valid cell}
+# Function to check whether the random adjacent move is valid!
+isValidPos <- function(i, j, n, m) {
+  if (i < 1 | j < 1 | i > n - 1 | j > m - 1)
+  {
+    return (0)
+  }
+  else
+  {
+    return (1)
+  }
+}
+```
+
+The implementation of rules if the token lands on a green square are done in the following function.
+Given Rule 1 to replace the collection with "f","f", "h", "k" should happen with the probability P and Rule 2 to remove all copies of the letter shown on the square from the collection with probability (1-p) are implemented in this function.\
+
+This function takes the position of the current cell (x,y), the collection and the probability P to be assigned for selecting the rule as arguments and returns the modified collection as result.
+
+```{r Function for Green square rules}
+#Function to implement rules if the token lands on green cell
+green_cell_check <- function(x, y, collection,p)
+{
+  list <- c("f", "f", "h", "k")
+  r<- sample(1:2, size=1, prob = c(p,1-p)) #Assign probability for rule 1 and rule 2
+  #Rule 1
+  if (r==1)
+  {
+    collection <- list # Code to assign the green rule list "f,f,h,k" to the collection
+  }
+  #Rule 2
+  else
+  { # Code to remove the specific character from the collection list
+    collection <- setdiff(collection, lgrid[x, y])     
+  }
+  return (collection)
+}
+```
+
+# Part 2 & 3
+
+a)  Given the rules of the game, the climax of the game is to get a 5-character palindrome. A string is said to be a palindrome if the string and its reverse are found to be the same. In the case of this palindrome game, the length of the string is given to be 5. Thus, there should be two pairs of identical characters and at most 1 unique character.\
+    Example: abcba
+
+-   2 pairs of identical characters -- a - 2 times b - 2 times
+-   1 Unique character -- c -- 1 time
+
+Suggested rule, if the token lands on a white square\
+If the collection (list of characters that are already taken for palindrome from 8X8 grid in random moves) has less than 3 characters, we can pick up the letter that the token lands on.\
+
+Whereas, if the collection already has 3 characters, then for picking up the 4th and 5th character, the suggested steps in this project are given by\
+4th Character -- Temporarily append the 4th character to the collection.\
+
+Check the frequency of each word in the collection.
+Only add the new character if the following conditions are met\
+i.
+All the characters in the collection are identical\
+ii.
+There is at least 1 pair of identical characters in the collection\
+5th Character -- Temporarily append the 5th character to the collection and check there should be at most only 1 unique character in the collection.\
+
+b)  By following the above strategies, we can reduce the number of moves taken to fill the first 3 characters in the collection. i.e. The number of moves taken to fill the first 3 words of the collection is 3, provided the token is placed on a white square for every move.\
+
+Also, if in case the token lands on a green cell and the collection gets modified based on green square rules, the above strategy to fill the characters for the 4th and 5th positions will help in reducing the number of moves in the game.\
+
+One of the common methods to solve this game is to brute force through random cells and check for palindrome in each combination, which consumes a large number of unwanted moves resulting in an inefficient way of solving the game.\
+
+Whereas in the above strategy, the collection is checked for palindrome only on the 4th move or 5th move thus reducing computation time and complexity and solving the game in considerably a smaller number of moves.\
+
+```{r Function to fill 4th and 5th position in collection}
+# Function with rules to check the 4th and 5th characters 
+#of the collection is suitable for the palindrome!
+ispalindrome <- function(v, pos)
+{
+  # Create a list of characters
+  chars <- v
+  # Create a frequency table for the characters
+  freq_table <- table(chars)
+  # Check if there is only 2 or no character with odd frequency 
+  #to check for 4th character in the collection
+  if (pos == 4)
+  {
+    is_palindrome <-
+      ((sum(freq_table %% 2 == 1) == 2) |
+         (sum(freq_table %% 2 == 0) == 2))
+  }
+  # Check if there is at most one character with an odd frequency
+  #to check for 5th character in the collection
+  else
+  {
+    is_palindrome <- sum(freq_table %% 2 == 1) <= 1
+  }
+  
+  # Return the result
+  if (is_palindrome) {
+    return(1)
+  } else {
+    return(0)
+  }
+}
+
+```
+
+This strategy can be further improved by training the game more specifically to the game board (i.e. 8X8 grid).\
+
+In the above strategy, the first 3 characters are picked up from the game board without any rules and filled into collection.
+This can be improvised by checking the frequency of each character on the board and filling up the most frequent character to the first 3 positions of the collection.
+By this approach, the probability of filling the suitable 4th and 5th characters in the collection will be improvised, thereby reducing the number of moves to finish the game.\
+
+The below function is the controller of the game that simulates the next random move, checks for white or green cells and implements the above-discussed strategy by calling respective functions.\
+
+```{r Game simulation}
+
+#Function to generate palindrome and calculate total number of moves to complete the game
+get_palindrome <- function(x, y, moves, collection,p)
+{
+  flag <- 1 #Flag to check whether the random move is made already
+  adj <- get_random_adjacent(x, y)
+  x <- adj[1]
+  y <- adj[2]
+  moves <- moves + 1
+  ran <- 0
+#Condition to check whether the token is on the green square
+    if (x == 2 && y == 6 |
+           x == 3 && y == 7 | x == 6 && y == 2 | x == 7 && y == 3) 
+  {
+    collection <- green_cell_check(x, y, collection,p)
+    return(c(x, y, moves, collection))
+  }
+  #If collection is empty add the current square character to the collection
+  else if (length(collection) == 0) 
+  {
+    c <- c(collection, lgrid[x, y])
+    return(c(x, y, moves, c))
+  }
+  # Rule to fill the 4th character in the collection
+  else if (length(collection) == 3) 
+  {
+    pos <- 4
+    while (flag == 1)  #Repeat the process till 4th character is filled
+    {
+      if (ran == 1)
+      {
+        adj <- get_random_adjacent(x, y)
+        x <- adj[1]
+        y <- adj[2]
+        moves <- moves + 1
+      }
+      ran <- 1
+      if (ispalindrome(append(collection, lgrid[x, y]), pos) == 1) 
+      {
+        flag <- 0
+        c <- c(collection, lgrid[x, y])
+        return(c(x, y, moves, c))
+      }
+    }
+  }
+  else if (length(collection) == 4) # Rule to fill the 5th character in the collection
+  {
+    pos <- 5
+    while (flag == 1) #Repeat the process till 5th character is filled
+    {
+      if (ran == 1)
+      {
+        adj <- get_random_adjacent(x, y)
+        x <- adj[1]
+        y <- adj[2]
+        moves <- moves + 1
+       }
+      ran <- 1
+      if (ispalindrome(append(collection, lgrid[x, y]), pos) == 1)
+      {
+        flag <- 0
+        c <- c(collection, lgrid[x, y])
+        return(c(x, y, moves, c))
+      }
+     }
+  }
+  else
+  {# Simply add the found character from the square to the 2nd and 3rd positions in the list
+    c <- c(collection, lgrid[x, y])  
+    return(c(x, y, moves, c))
+  }
+}
+```
+
+As discussed in the first section, the first move of the game should be user-defined and if it is on the edge of the board, it should again be randomly moved, which is implemented below.
+This function initiates the game by getting the starting position and probability for rule selection (green square) and returns the total number of moves to complete the game.\
+
+```{r Game initiator - returns total moves}
+
+# The main function that returns the total number of moves to complete the game
+get_moves <- function(u,v,p)
+{
+# Initialize starting square (User defined)
+moves <- 1
+x <- u
+y <- v
+collection <- c()
+
+#Condition to check whether the starting square is on any edges and switch the same
+while (x == 1 | x == 8 | y == 1 | y == 8)
+{
+  x <- sample(1:8, 1)
+  y <- sample(1:8, 1)
+  moves <- moves + 1
+}
+collection <- c(lgrid[x, y])
+
+#Simulate the program to fill the collection with palindromic characters
+while (length(collection) < 5)
+{
+  result <- get_palindrome(x, y, moves, collection,p)
+  x <- as.numeric(result[1])
+  y <- as.numeric(result[2])
+  moves <- as.numeric(result[3])
+  
+  collection <- result[-c(1, 2, 3)]
+ }
+# Return moves
+return (moves)
+}
+```
+
+# Part 4
+
+Given, to start the game from the square D4, i.e.(4,4).
+By observing\
+
+```{r test }
+#Part 4
+#Probability P=0
+p0 <- replicate(10000, get_moves(4,4,0))
+#Probability P=0.2
+p1 <- replicate(10000, get_moves(4,4,0.3))
+#Probability P=0.7
+p2 <- replicate(10000, get_moves(4,4,0.7))
+#Probability P=1
+p3 <- replicate(10000, get_moves(4,4,1))
+
+par( mfrow= c(2,2) ) #To print the graph in grid
+hist(p0, main ="Probability P=0", xlab = "Number of Moves" )
+hist(p1, main ="Probability P=0.2", xlab = "Number of Moves" )
+hist(p2, main ="Probability P=0.7", xlab = "Number of Moves" )
+hist(p3, main ="Probability P=1", xlab = "Number of Moves" )
+```
+
+As we can see from the histogram, the game is resolved in fewer moves when increasing the probability of Rule 1\
+Let the probability for the player to win the game in less than 20 moves be 6.
+(w=6)\
+
+```{r, quantile}
+#Probability = 0
+quantile(p0, 0.60)
+
+#Probability = 0.2
+quantile(p1, 0.60)
+
+#Probability = 0.7
+quantile(p2, 0.60)
+
+#Probability = 1
+quantile(p3, 0.60)
+
+```
+
+By varying the P value in the game, it is found that the number of moves taken to complete the game in less than 20 moves increases by increasing the P value.\
+
+This behaviour states that implementation on Rule 1, i.e. replacing the collection with "f","f","h","k" is much more friendly in solving the game with fewer moves.\
+
+This is because as per the strategy, the collection already has a pair of identical characters "f" and a non identical character "h" or "k", thus reducing the number of moves to fill the 1st 4 positions of the collection to a considerable extent.
+The 5th position in the collection can be any of the characters "h" or "k" which is then filled as per the above-discussed strategy.\
+
+# Part 5
+
+If the starting points are D4 with p=0.95 and f6 with p=0.05, the mean and standard deviation of the total number of the moves taken will be\
+
+```{r part5}
+#Part 5
+#Start with D4 with Probabilty 0.95
+D4 <- replicate(10000, get_moves(4,4,0.95))
+# Mean value of D4
+mean(D4)
+# Standard Deviation of D4
+sd(D4)
+
+
+#Start with F6 with Probabilty 0.95
+F6 <- replicate(10000, get_moves(6,6,0.05))
+# Mean value of F6
+mean(F6)
+# Satandard Deviation of F6
+sd(F6)
+```
+
+There is a considerable difference between the pattern of solving the game with D4 and F6 as starting points.
+This may be due to the strategy followed by the game for adding characters from white squares to the collection.\
+
+The below plot compares the total number of moves taken for solving the game by starting with D4 and F6 with respective probabilities P = 0.95 and 0.05.\
+
+```{r Part5.1}
+mycol1 <- rgb(0, 0, 255, max = 255, alpha = 50)
+mycol2 <- rgb(255, 0, 0, max = 255, alpha = 50)
+```
+
+```{r, fig.show='hide', results='hide' }
+hga<-hist(D4, main ="Histogram for number of moves to complete the game starting from D4", xlab = "Number of Moves" )
+hgb<-hist(F6, main ="Histogram for number of moves to complete the game starting from F6", xlab = "Number of Moves" )
+```
+
+```{r Part5.2}
+plot(hga, col =mycol1, main ="Histogram for number of moves to complete the game", xlab = "Number of Moves") # Plot 1st histogram using a transparent color
+plot(hgb, col = mycol2, add = TRUE) # Add 2nd histogram using different color
+legend("topright", c("Start from D4", "Start from F6"), fill=c(mycol1, mycol2))
+```
+
+```{r part5.3}
+#The Expected val
+sum(D4)*0.95
+sum(F6)*0.05
+
+```
+
+From the histogram, we can observe that starting from D4 takes fewer moves than starting with F6.
+But they are almost proportional to each other.
+But overall, the range of moves is contained within \~(4,250) per 10000 iterations.\
+
+Checking the quantile of moves taken by begining with D4 and F6 with w=0.60\
+
+```{r part5.4}
+quantile(F6, 0.60)
+quantile(D4, 0.60)
+
+```
+
+The probability of completing the game with fewer moves is greater when starting with D4 than that with F6.\
+
+The histogram and quantile values give a comparison of the moves taken to solve the game starting from D4 and F6.
+This, in turn, demonstrates the similarity between both the cases in a more precise way.\
+
+# Part 6
+
+Given XA be a random variable representing the number of moves required to complete the game when the token starts from A.\
+
+The number of moves needed to complete the game starting from square A is given by\
+{25, 13, 16, 24, 11, 12, 24, 26, 15, 19, 34}\
+The number of moves needed to complete the game starting from square A is given by\
+{35, 41, 23, 26, 18, 15, 33, 42, 18, 47, 21, 26}\
+To test whether $E(X_A) = E(X_B)$\
+The formula to calculate expectancy is given by\
+$$
+E(X_A)=\sum_{n=1}^{10}X \times P(X_A)
+$$ where n is the count of moves present in the list.\
+
+The $E(X_A)$ is calculated as follows\
+There are 10 non-identical number of moves from Square A. Thus the probability of each move is given by 1/10.\
+
+The below code calculates $E(X_A)$\
+
+```{r ExpectA}
+A = c(25,13,16,24,11,12,26,15,19,34)
+sum(A)*(1/10)
+```
+
+Similarly there are 11 non-identical number of moves from Square B, with this the probability of each move will be 1/11.
+
+```{r ExpectB}
+B = c(35, 41, 23, 26, 18, 15, 33, 42, 18, 47, 21)
+sum(B)*(1/11)
+```
+
+From the above observation, the $E(X_A)$ is not equal to $E(X_B)$.
